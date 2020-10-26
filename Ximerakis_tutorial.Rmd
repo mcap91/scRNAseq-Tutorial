@@ -1,0 +1,148 @@
+---
+title: "Intro to scRNAseq"
+output: html_document
+---
+
+```{r libraries, message=FALSE, warning=FALSE}
+
+library(Seurat)
+library(ggplot2)
+
+```
+
+#cell conts and metadata from local dir
+```{r read in data}
+
+getwd() #check local working dir
+
+xim_meta <- read.csv("metadata_file_1.txt", header = TRUE, sep = "\t")
+
+xim_counts <- read.table("counts_file_1.txt", header = TRUE, sep = "\t", check.names = FALSE)
+
+all(row.names(xim_meta) == colnames(xim_counts)) #are all the cells the same?
+
+```
+
+#create seurat objects from single file
+```{r seurat object}
+
+xim_seurat<-CreateSeuratObject(counts = xim_counts, meta.data = xim_meta)
+
+xim_seurat_filter_first<-CreateSeuratObject(counts = xim_counts, meta.data = xim_meta, min.cells = 10)
+
+```
+
+#Filter lowly expressed genes
+```{r lowly expressed genes}
+
+#look at raw data
+counts <- rowSums(xim_seurat@assays$RNA@counts != 0)
+counts <- data.frame(counts=counts, row.names = rownames(xim_seurat))
+hist(counts$counts, col = 'red', breaks = 50, main ="feature/cell counts, non filter")
+
+#filter min number of cells expressing any gene
+counts_filter_now <- data.frame(counts = counts[counts$counts >= 10,, drop=FALSE]) #set minimum cells 
+hist(counts_filter_now$counts, col = 'skyblue3', breaks = 50, main ="feature/cell counts, filter now")
+
+#look at data filtered via create seurat object
+counts_filter_first <- rowSums(xim_seurat_filter_first@assays$RNA@counts != 0)
+counts_filter_first<-data.frame(counts = counts_filter_first, row.names = rownames(xim_seurat_filter_first))
+hist(counts_filter_first$counts, col = 'green', breaks = 50, main ="feature/cell counts, seurat filter first")
+
+#how any genes did we remove?
+paste("number of removed genes:", nrow(counts)-nrow(counts_filter_now))
+paste("percent of removed genes:", (nrow(counts)-nrow(counts_filter_now))/nrow(counts)*100)
+
+```
+
+#remove lowly expressed transcripts from raw seurat object, using "filter now" geens
+```{r}
+gene.keep<-rownames(counts_filter_now)
+xim_seurat<-xim_seurat[rownames(xim_seurat) %in% c(gene.keep),]
+```
+
+#Quality Control
+```{r QC}
+
+#Calc %Mito Genes
+xim_seurat[["percent.mt"]] <- PercentageFeatureSet(xim_seurat, pattern = "^mt-")
+xim_seurat[["percent.ribo"]]<-PercentageFeatureSet(xim_seurat, pattern = "^Rp")
+
+#Visualize QC metrics as a violin plot
+VlnPlot(xim_seurat,
+        features = c("nFeature_RNA", "nCount_RNA", "percent.mt", "percent.ribo"),
+        ncol = 4)
+
+
+FeatureScatter(xim_seurat, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")+
+  NoLegend() 
+FeatureScatter(xim_seurat, feature1 = "nFeature_RNA", feature2 = "percent.mt")+
+  NoLegend() 
+
+```
+
+#Filter
+```{r Filter}
+xim_seurat <- subset(xim_seurat, subset = nFeature_RNA > 300 & nFeature_RNA <= 3000 & 
+                       percent.mt <= 10 & percent.ribo <=13) 
+
+
+FeatureScatter(xim_seurat, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")+
+  NoLegend() 
+FeatureScatter(xim_seurat, feature1 = "nFeature_RNA", feature2 = "percent.mt")+
+  NoLegend() 
+
+```
+
+#Normalize, scale, findvariable features, and plot - the Seurat pipeline
+```{r Norm and scale}
+xim_seurat <- NormalizeData(xim_seurat) 
+xim_seurat <- FindVariableFeatures(xim_seurat, selection.method = "vst", nfeatures = 2000)
+xim_seurat <- ScaleData(xim_seurat)
+
+```
+
+#Example of log10 normalization
+```{r log10 example}
+hist(as.matrix(xim_seurat@assays$RNA@counts),
+     main = "Raw Counts")
+hist(as.matrix(xim_seurat@assays$RNA@data),
+     main = "Seurat norm and scaled") 
+hist(log10(as.matrix(xim_seurat@assays$RNA@counts)+1),
+     main = "Raw Counts log10+1")
+```
+
+```{r dimensional reduction}
+xim_seurat <- RunPCA(xim_seurat,
+                     npcs = 50,
+                     features = VariableFeatures(object = xim_seurat))
+xim_seurat <- RunUMAP(xim_seurat,
+                      dims = 1:30,
+                      n.neighbors = 30,
+                      min.dist = 0.3)
+
+DimPlot(xim_seurat, reduction = "umap") + NoLegend()
+
+#if you want to try a tSNE
+#xim_seurat <- RunTSNE(xim_seurat, dims = 1:30)
+#DimPlot(xim_seurat, reduction = "tsne") + NoLegend()
+
+```
+
+#View dataset annotations
+```{r data annotations}
+
+plot <- DimPlot(xim_seurat,
+        group.by = "cell_type_age",
+        label = T,
+        repel = T)
+
+plot + NoLegend()
+
+```
+
+#Finding cluster markers
+```{r}
+
+```
+
