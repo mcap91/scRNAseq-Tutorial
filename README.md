@@ -19,6 +19,8 @@ before class. It could take up to 10-15 min.
 
 `Install.packages("ggplot2")`
 
+`Install.packages("dplyr")`
+
 <br />
 
 Download the data we will be working with. You need these files:

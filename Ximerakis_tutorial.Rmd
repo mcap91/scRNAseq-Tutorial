@@ -3,10 +3,14 @@ title: "Intro to scRNAseq"
 output: html_document
 ---
 
+#For another guided tutorial
+#see https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html
+
 ```{r libraries, message=FALSE, warning=FALSE}
 
 library(Seurat)
 library(ggplot2)
+library(dplyr)
 
 ```
 
@@ -36,7 +40,7 @@ xim_seurat_filter_first<-CreateSeuratObject(counts = xim_counts, meta.data = xim
 ```{r lowly expressed genes}
 
 #look at raw data
-counts <- rowSums(xim_seurat@assays$RNA@counts != 0)
+counts <- rowSums(as.matrix(xim_seurat@assays$RNA@counts != 0))
 counts <- data.frame(counts=counts, row.names = rownames(xim_seurat))
 hist(counts$counts, col = 'red', breaks = 50, main ="feature/cell counts, non filter")
 
@@ -45,7 +49,7 @@ counts_filter_now <- data.frame(counts = counts[counts$counts >= 10,, drop=FALSE
 hist(counts_filter_now$counts, col = 'skyblue3', breaks = 50, main ="feature/cell counts, filter now")
 
 #look at data filtered via create seurat object
-counts_filter_first <- rowSums(xim_seurat_filter_first@assays$RNA@counts != 0)
+counts_filter_first <- rowSums(as.matrix(xim_seurat_filter_first@assays$RNA@counts != 0))
 counts_filter_first<-data.frame(counts = counts_filter_first, row.names = rownames(xim_seurat_filter_first))
 hist(counts_filter_first$counts, col = 'green', breaks = 50, main ="feature/cell counts, seurat filter first")
 
@@ -86,7 +90,7 @@ FeatureScatter(xim_seurat, feature1 = "nFeature_RNA", feature2 = "percent.mt")+
 xim_seurat <- subset(xim_seurat, subset = nFeature_RNA > 300 & nFeature_RNA <= 3000 & 
                        percent.mt <= 10 & percent.ribo <=13) 
 
-
+#compare after QC
 FeatureScatter(xim_seurat, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")+
   NoLegend() 
 FeatureScatter(xim_seurat, feature1 = "nFeature_RNA", feature2 = "percent.mt")+
@@ -95,10 +99,10 @@ FeatureScatter(xim_seurat, feature1 = "nFeature_RNA", feature2 = "percent.mt")+
 ```
 
 #Normalize, scale, findvariable features, and plot - the Seurat pipeline
-```{r Norm and scale}
+```{r Norm and scale, include=FALSE}
 xim_seurat <- NormalizeData(xim_seurat) 
 xim_seurat <- FindVariableFeatures(xim_seurat, selection.method = "vst", nfeatures = 2000)
-xim_seurat <- ScaleData(xim_seurat)
+xim_seurat <- ScaleData(xim_seurat, features = rownames(xim_seurat)) #scale all features
 
 ```
 
@@ -112,6 +116,18 @@ hist(log10(as.matrix(xim_seurat@assays$RNA@counts)+1),
      main = "Raw Counts log10+1")
 ```
 
+#Inspect Variable Features
+```{r variable features}
+# Identify the 10 most highly variable genes
+top10 <- head(VariableFeatures(xim_seurat), 10)
+
+# plot variable features with and without labels
+plot1 <- VariableFeaturePlot(xim_seurat)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+plot2 + ggtitle("2000 Variable Features")
+```
+
+#Dimensional Reduction 
 ```{r dimensional reduction}
 xim_seurat <- RunPCA(xim_seurat,
                      npcs = 50,
@@ -129,6 +145,15 @@ DimPlot(xim_seurat, reduction = "umap") + NoLegend()
 
 ```
 
+#Manual Clustering
+```{r}
+
+xim_seurat <- FindNeighbors(xim_seurat, dims = 1:10)
+xim_seurat <- FindClusters(xim_seurat, resolution = 0.5)
+DimPlot(xim_seurat, reduction = "umap")
+
+```
+#This dataset already has cluster annotations 
 #View dataset annotations
 ```{r data annotations}
 
@@ -142,7 +167,20 @@ plot + NoLegend()
 ```
 
 #Finding cluster markers
-```{r}
+```{r single cluster}
+Idents(xim_seurat)<-"cell_type_age"
+
+# find all markers of Young Microlgia
+Mg_markers <- FindMarkers(xim_seurat, ident.1 = "MG_young", only.pos = TRUE) #can take ~12 seconds
+head(Mg_markers, n = 5)
+```
+
+```{r all clusters}
+
+# find markers for every cluster compared to all remaining cells, report only the positive ones
+all_markers <- FindAllMarkers(xim_seurat, only.pos = TRUE, logfc.threshold = 1) #will take longer depending on parameters used. see ?FindAllMarkers
+top10 <- all_markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
+DoHeatmap(xim_seurat, features = top10$gene) + NoLegend()
 
 ```
 
