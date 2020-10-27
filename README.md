@@ -51,7 +51,7 @@ Install and configure git bash, and enable R studio to use Git terminal
 <br />
 <https://www.stanleyulili.com/git/how-to-install-git-bash-on-windows/>
 
-Clone the above GitHub repository into a new directory on your local
+Using the RStudio git terminal, clone the above GitHub repository into a new directory on your local
 machine.
 
 `cd` to a directory where the repository will be copied
