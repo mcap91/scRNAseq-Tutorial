@@ -3,8 +3,11 @@ title: "Intro to scRNAseq"
 output: html_document
 ---
 
-#For another guided tutorial
+#For another guided tutorial:
 #see https://satijalab.org/seurat/v3.1/pbmc3k_tutorial.html
+
+#advanced QC tutorial:
+#https://nbisweden.github.io/excelerate-scRNAseq/session-qc/Quality_control.html
 
 ```{r libraries, message=FALSE, warning=FALSE}
 
