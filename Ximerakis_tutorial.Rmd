@@ -186,4 +186,9 @@ top10 <- all_markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
 DoHeatmap(xim_seurat, features = top10$gene) + NoLegend()
 
 ```
+#Plotting
+```{r Feature Plotting Basics}
+FeaturePlot(xim_seurat, features = "P2ry12")
+VlnPlot(xim_seurat, features = "P2ry12", group.by = "cell_type_age") + NoLegend()
+```
 
