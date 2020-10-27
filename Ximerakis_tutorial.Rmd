@@ -191,14 +191,5 @@ DoHeatmap(xim_seurat, features = top10$gene) + NoLegend()
 FeaturePlot(xim_seurat, features = "P2ry12")
 VlnPlot(xim_seurat, features = "P2ry12", group.by = "cell_type_age") + NoLegend()
 ```
-#test new branch edits and merge request 
-```{r}
 
-Idents(xim_seurat)<-"cell_type_age"
-mg <- WhichCells(xim_seurat, idents = "MG_young")
-
-microglia_subset <- subset(xim_seurat, cells = mg)
-
-
-```
 
