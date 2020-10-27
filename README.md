@@ -1,9 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
-
 # scRNAseq-Tutorial
 
 This repo contains a prepared counts and meta data file from
